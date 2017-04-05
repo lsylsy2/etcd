@@ -118,7 +118,7 @@ func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 	//if err := rc.wal.SaveSnapshot(walSnap); err != nil {
 	//	return err
 	//}
-	return rc.wal.ReleaseLockTo(snap.Metadata.Index)
+	//return rc.wal.ReleaseLockTo(snap.Metadata.Index)
 }
 
 func (rc *raftNode) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
@@ -281,15 +281,15 @@ func (rc *raftNode) startRaft() {
 		MaxInflightMsgs: 256,
 	}
 
-	if oldwal {
-		rc.node = raft.RestartNode(c)
-	} else {
+	// if oldwal {
+		// rc.node = raft.RestartNode(c)
+	// } else {
 		startPeers := rpeers
 		if rc.join {
 			startPeers = nil
 		}
 		rc.node = raft.StartNode(c, startPeers)
-	}
+	// }
 
 	ss := &stats.ServerStats{}
 	ss.Initialize()
