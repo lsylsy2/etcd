@@ -58,7 +58,7 @@ type raftNode struct {
 	// raft backing for the commit/error channel
 	node        raft.Node
 	raftStorage *raft.MemoryStorage
-	wal         *wal.WAL
+	//wal         *wal.WAL
 
 	snapshotter      *snap.Snapshotter
 	snapshotterReady chan *snap.Snapshotter // signals when snapshotter is ready
@@ -107,6 +107,7 @@ func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, 
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
+    return nil //DO NOTHING
 	if err := rc.snapshotter.SaveSnap(snap); err != nil {
 		return err
 	}
@@ -114,9 +115,9 @@ func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 		Index: snap.Metadata.Index,
 		Term:  snap.Metadata.Term,
 	}
-	if err := rc.wal.SaveSnapshot(walSnap); err != nil {
-		return err
-	}
+	//if err := rc.wal.SaveSnapshot(walSnap); err != nil {
+	//	return err
+	//}
 	return rc.wal.ReleaseLockTo(snap.Metadata.Index)
 }
 
@@ -194,55 +195,57 @@ func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
 
 // openWAL returns a WAL ready for reading.
 func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
-	if !wal.Exist(rc.waldir) {
-		if err := os.Mkdir(rc.waldir, 0750); err != nil {
-			log.Fatalf("raftexample: cannot create dir for wal (%v)", err)
-		}
+    return nil
+	// if !wal.Exist(rc.waldir) {
+		// if err := os.Mkdir(rc.waldir, 0750); err != nil {
+			// log.Fatalf("raftexample: cannot create dir for wal (%v)", err)
+		// }
 
-		w, err := wal.Create(rc.waldir, nil)
-		if err != nil {
-			log.Fatalf("raftexample: create wal error (%v)", err)
-		}
-		w.Close()
-	}
+		// w, err := wal.Create(rc.waldir, nil)
+		// if err != nil {
+			// log.Fatalf("raftexample: create wal error (%v)", err)
+		// }
+		// w.Close()
+	// }
 
-	walsnap := walpb.Snapshot{}
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-	}
-	log.Printf("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
-	w, err := wal.Open(rc.waldir, walsnap)
-	if err != nil {
-		log.Fatalf("raftexample: error loading wal (%v)", err)
-	}
+	// walsnap := walpb.Snapshot{}
+	// if snapshot != nil {
+		// walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+	// }
+	// log.Printf("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
+	// w, err := wal.Open(rc.waldir, walsnap)
+	// if err != nil {
+		// log.Fatalf("raftexample: error loading wal (%v)", err)
+	// }
 
-	return w
+	// return w
 }
 
 // replayWAL replays WAL entries into the raft instance.
 func (rc *raftNode) replayWAL() *wal.WAL {
-	log.Printf("replaying WAL of member %d", rc.id)
-	snapshot := rc.loadSnapshot()
-	w := rc.openWAL(snapshot)
-	_, st, ents, err := w.ReadAll()
-	if err != nil {
-		log.Fatalf("raftexample: failed to read WAL (%v)", err)
-	}
-	rc.raftStorage = raft.NewMemoryStorage()
-	if snapshot != nil {
-		rc.raftStorage.ApplySnapshot(*snapshot)
-	}
-	rc.raftStorage.SetHardState(st)
+    return nil
+	// log.Printf("replaying WAL of member %d", rc.id)
+	// snapshot := rc.loadSnapshot()
+	// w := rc.openWAL(snapshot)
+	// _, st, ents, err := w.ReadAll()
+	// if err != nil {
+		// log.Fatalf("raftexample: failed to read WAL (%v)", err)
+	// }
+	// rc.raftStorage = raft.NewMemoryStorage()
+	// if snapshot != nil {
+		// rc.raftStorage.ApplySnapshot(*snapshot)
+	// }
+	// rc.raftStorage.SetHardState(st)
 
-	// append to storage so raft starts at the right place in log
-	rc.raftStorage.Append(ents)
-	// send nil once lastIndex is published so client knows commit channel is current
-	if len(ents) > 0 {
-		rc.lastIndex = ents[len(ents)-1].Index
-	} else {
-		rc.commitC <- nil
-	}
-	return w
+	// // append to storage so raft starts at the right place in log
+	// rc.raftStorage.Append(ents)
+	// // send nil once lastIndex is published so client knows commit channel is current
+	// if len(ents) > 0 {
+		// rc.lastIndex = ents[len(ents)-1].Index
+	// } else {
+		// rc.commitC <- nil
+	// }
+	// return w
 }
 
 func (rc *raftNode) writeError(err error) {
@@ -262,8 +265,8 @@ func (rc *raftNode) startRaft() {
 	rc.snapshotter = snap.New(rc.snapdir)
 	rc.snapshotterReady <- rc.snapshotter
 
-	oldwal := wal.Exist(rc.waldir)
-	rc.wal = rc.replayWAL()
+	//oldwal := wal.Exist(rc.waldir)
+	//rc.wal = rc.replayWAL()
 
 	rpeers := make([]raft.Peer, len(rc.peers))
 	for i := range rpeers {
@@ -384,7 +387,7 @@ func (rc *raftNode) serveChannels() {
 	rc.snapshotIndex = snap.Metadata.Index
 	rc.appliedIndex = snap.Metadata.Index
 
-	defer rc.wal.Close()
+	//defer rc.wal.Close()
 
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -425,7 +428,7 @@ func (rc *raftNode) serveChannels() {
 
 		// store raft entries to wal, then publish over commit channel
 		case rd := <-rc.node.Ready():
-			rc.wal.Save(rd.HardState, rd.Entries)
+			//rc.wal.Save(rd.HardState, rd.Entries)
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				rc.saveSnap(rd.Snapshot)
 				rc.raftStorage.ApplySnapshot(rd.Snapshot)
