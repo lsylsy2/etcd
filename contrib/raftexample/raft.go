@@ -32,7 +32,7 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
+	//"github.com/coreos/etcd/wal/walpb"
 	"golang.org/x/net/context"
 )
 
